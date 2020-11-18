@@ -151,7 +151,7 @@ spec:
         - name: MINIO_END_POINT
           value: minio.{{ .Release.Namespace }}.svc.cluster.local
         - name: MINIO_PORT
-          value: {{ (split ":" .Values.minio.endpoint)._1 | default 9000 | quote }}
+          value: {{ (split ":" (.Values.minio.endpoint | toString))._1 | default 9000 | quote }}
         - name: MINIO_ACCESS_KEY
           value: {{ .Values.minio.accessKey }}
         - name: MINIO_SECRET_KEY
@@ -159,7 +159,7 @@ spec:
         - name: MINIO_REGION
           value: {{ .Values.minio.region }}
     {{- end }}
-    {{- if .Values.components.workspace.localTheia }}
+    {{- if .Values.components.workspace.localThei a }}
         - name: LOCAL_THEIA
           value: "true"
     {{- end }}
