@@ -50,10 +50,10 @@ export class IDESettings extends React.Component<IDESettingsProps> {
         if (isIDEAlias(defaultIde)) {
             return defaultIde;
         }
-        if (defaultIde) {
-            return 'image';
+        if (defaultIde === undefined) {
+            return 'theia';
         }
-        return 'theia';
+        return 'image';
     }
 
     private get image(): string | undefined {
