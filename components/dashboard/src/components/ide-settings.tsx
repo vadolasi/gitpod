@@ -27,7 +27,35 @@ function isIDEAlias(ide: string | undefined): ide is IDEAlias {
 }
 type IDEKind = IDEAlias | 'image';
 
-export class IDESettings extends React.Component<IDESettingsProps> {
+export interface IDESettingsState {
+    value?: IDEKind
+    image?: string
+}
+
+export class IDESettings extends React.Component<IDESettingsProps, IDESettingsState> {
+
+    constructor(props: IDESettingsProps) {
+        super(props);
+        this.state = this.updateStateFromProps({})
+    }
+
+    componentDidUpdate(prevProps: IDESettingsProps): void {
+        if (this.props.user === prevProps.user) {
+            return;
+        }
+        this.setState(state => this.updateStateFromProps(state));
+    }
+
+    private updateStateFromProps(current: IDESettingsState): IDESettingsState {
+        const defaultIde = this.props.user.additionalData?.ideSettings?.defaultIde;
+        if (isIDEAlias(defaultIde)) {
+            return { ...current, value: defaultIde };
+        }
+        if (defaultIde === undefined) {
+            return { ...current, value: 'theia' };
+        }
+        return { ...current, value: 'image', image: defaultIde };
+    }
 
     render() {
         return <React.Fragment>
@@ -38,47 +66,32 @@ export class IDESettings extends React.Component<IDESettingsProps> {
     }
 
     private renderRadio(label: string, value: IDEKind) {
-        const checked = value === this.value;
+        const checked = value === this.state.value;
         return <Grid item xs={12}>
-            <FormControlLabel control={<Radio color="default" />} label={label} value={value} checked={checked} onChange={this.updateDefaultIde} />
-            {value === 'image' && <Input value={this.image} onChange={this.updateDefaultIde} />}
+            <FormControlLabel control={<Radio color="default" />} label={label} value={value} checked={checked} onChange={this.updateState} />
+            {value === 'image' && <Input value={this.state.image} onChange={this.updateState} />}
         </Grid>;
     }
 
-    private get value(): IDEKind {
-        const defaultIde = this.props.user.additionalData?.ideSettings?.defaultIde;
-        if (isIDEAlias(defaultIde)) {
-            return defaultIde;
-        }
-        if (defaultIde) {
-            return 'image';
-        }
-        return 'theia';
-    }
-
-    private get image(): string | undefined {
-        const defaultIde = this.props.user.additionalData?.ideSettings?.defaultIde;
-        if (isIDEAlias(defaultIde)) {
-            return undefined;
-        }
-        return defaultIde;
-    }
-
-    private updateDefaultIde = (event: React.ChangeEvent<HTMLInputElement>) => {
-        let value = this.value;
-        let image = this.image;
+    private updateState = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const state: IDESettingsState = {}
         if (event.target.type === 'radio') {
-            value = event.target.value as IDEKind;
+            state.value = event.target.value as IDEKind;
         } else {
-            image = event.target.value;
+            state.image = event.target.value;
         }
+        this.setState(state, () => this.fireStateChange());
+    }
+
+    private fireStateChange(): void {
+        const { value, image } = this.state;
 
         const additionalData = (this.props.user.additionalData || {});
         const settings = additionalData.ideSettings || {};
         if (value === 'theia') {
             delete settings.defaultIde;
         } else if (value === 'image') {
-            settings.defaultIde = image;
+            settings.defaultIde = image || '';
         } else {
             settings.defaultIde = value;
         }
