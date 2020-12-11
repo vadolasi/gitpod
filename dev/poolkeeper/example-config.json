@@ -1,0 +1,14 @@
+
+{
+  "poolkeeper": {
+    "interval": "10m",
+    "tasks": [
+      {
+        "patchDeployment": {
+          "namespace": "kube-system",
+          "patch": "{\"spec\": {\"template\": {\"spec\": {\"affinity\": {\"nodeAffinity\": {\"requiredDuringSchedulingIgnoredDuringExecution\": {\"nodeSelectorTerms\": [{\"matchExpressions\": [{\"key\": \"gitpod.io/workload_meta\",\"operator\": \"In\",\"values\": [\"true\"]}]}]}}}}}}}"
+        }
+      }
+    ]
+  }
+}
