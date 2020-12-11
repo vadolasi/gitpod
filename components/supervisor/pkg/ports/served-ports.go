@@ -73,7 +73,7 @@ func (p *PollingServedPortsObserver) Observe(ctx context.Context) (<-chan []Serv
 			case <-ticker.C:
 			}
 
-			var ports []ServedPort
+			var ports map[uint32]*ServedPort
 			for _, fn := range []string{fnNetTCP, fnNetTCP6} {
 				fc, err := p.fileOpener(fn)
 				if err != nil {
@@ -87,11 +87,27 @@ func (p *PollingServedPortsObserver) Observe(ctx context.Context) (<-chan []Serv
 					errchan <- err
 					continue
 				}
-				ports = append(ports, ps...)
+				for _, port := range ps {
+					current, exists := ports[port.Port]
+					if exists {
+						if current.BoundToLocalhost && !port.BoundToLocalhost {
+							current.BoundToLocalhost = false
+						}
+					} else {
+						if ports == nil {
+							ports = make(map[uint32]*ServedPort)
+						}
+						ports[port.Port] = port
+					}
+				}
 			}
 
 			if len(ports) > 0 {
-				reschan <- ports
+				var values []ServedPort
+				for _, value := range ports {
+					values = append(values, *value)
+				}
+				reschan <- values
 			}
 		}
 	}()
@@ -99,7 +115,7 @@ func (p *PollingServedPortsObserver) Observe(ctx context.Context) (<-chan []Serv
 	return reschan, errchan
 }
 
-func readNetTCPFile(fc io.Reader, listeningOnly bool) (ports []ServedPort, err error) {
+func readNetTCPFile(fc io.Reader, listeningOnly bool) (ports []*ServedPort, err error) {
 	scanner := bufio.NewScanner(fc)
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
@@ -123,7 +139,7 @@ func readNetTCPFile(fc io.Reader, listeningOnly bool) (ports []ServedPort, err e
 			continue
 		}
 
-		ports = append(ports, ServedPort{
+		ports = append(ports, &ServedPort{
 			BoundToLocalhost: !globallyBound,
 			Port:             uint32(port),
 		})

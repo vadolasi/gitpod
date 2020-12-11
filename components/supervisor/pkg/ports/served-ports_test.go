@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 const validTCPInput = `  sl  local_address rem_address   st tx_queue rx_queue tr tm->when retrnsmt   uid  timeout inode                                                     
@@ -55,8 +56,68 @@ func TestObserve(t *testing.T) {
 					{Port: 6080},
 					{Port: 5900, BoundToLocalhost: true},
 					{Port: 22999},
-					{Port: 35900}, {Port: 5900, BoundToLocalhost: true},
+					{Port: 35900},
 					{Port: 36080},
+				},
+			},
+		},
+		{
+			Name: "the same port bound locally on ip4 and ip6",
+			FileContents: []string{
+				"", "",
+				`
+		   0: 00000000:17C0 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21757239 1 0000000000000000 100 0 0 10 0
+		   1: 0100007F:170C 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752303 1 0000000000000000 100 0 0 10 0
+		   2: 00000000:59D8 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752496 1 0000000000000000 100 0 0 10 0`,
+				`
+		   0: 00000000000000000000000000000000:EA60 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21750982 1 0000000000000000 100 0 0 10 0
+		   1: 00000000000000000000000001000000:170C 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752306 1 0000000000000000 100 0 0 10 0
+		   2: 00000000000000000000000000000000:59D7 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21748173 1 0000000000000000 100 0 0 10 0`,
+			},
+			Expectation: Expectation{
+				{
+					{Port: 6080}, {Port: 5900, BoundToLocalhost: true}, {Port: 23000},
+					{Port: 60000}, {Port: 22999},
+				},
+			},
+		},
+		{
+			Name: "the same port bound locally for ip4 and globally for ip6",
+			FileContents: []string{
+				"", "",
+				`
+   0: 00000000:17C0 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21757239 1 0000000000000000 100 0 0 10 0                  
+   1: 0100007F:170C 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752303 1 0000000000000000 100 0 0 10 0                  
+   2: 00000000:59D8 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752496 1 0000000000000000 100 0 0 10 0`,
+				`
+   0: 00000000000000000000000000000000:EA60 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21750982 1 0000000000000000 100 0 0 10 0
+   1: 00000000000000000000000000000000:170C 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752306 1 0000000000000000 100 0 0 10 0
+   2: 00000000000000000000000000000000:59D7 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21748173 1 0000000000000000 100 0 0 10 0`,
+			},
+			Expectation: Expectation{
+				{
+					{Port: 6080}, {Port: 5900}, {Port: 23000},
+					{Port: 60000}, {Port: 22999},
+				},
+			},
+		},
+		{
+			Name: "the same port bound globally for ip4 and locally for ip6",
+			FileContents: []string{
+				"", "",
+				`
+   0: 00000000:17C0 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21757239 1 0000000000000000 100 0 0 10 0                  
+   1: 00000000:170C 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752303 1 0000000000000000 100 0 0 10 0                  
+   2: 00000000:59D8 00000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752496 1 0000000000000000 100 0 0 10 0`,
+				`
+   0: 00000000000000000000000000000000:EA60 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21750982 1 0000000000000000 100 0 0 10 0
+   1: 00000000000000000000000001000000:170C 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21752306 1 0000000000000000 100 0 0 10 0
+   2: 00000000000000000000000000000000:59D7 00000000000000000000000000000000:0000 0A 00000000:00000000 00:00000000 00000000 33333        0 21748173 1 0000000000000000 100 0 0 10 0`,
+			},
+			Expectation: Expectation{
+				{
+					{Port: 6080}, {Port: 5900}, {Port: 23000},
+					{Port: 60000}, {Port: 22999},
 				},
 			},
 		},
@@ -94,7 +155,8 @@ func TestObserve(t *testing.T) {
 				act = append(act, up)
 			}
 
-			if diff := cmp.Diff(test.Expectation, act); diff != "" {
+			sortPorts := cmpopts.SortSlices(func(x, y ServedPort) bool { return x.Port < y.Port })
+			if diff := cmp.Diff(test.Expectation, act, sortPorts); diff != "" {
 				t.Errorf("unexpected result (-want +got):\n%s", diff)
 			}
 		})
@@ -103,7 +165,7 @@ func TestObserve(t *testing.T) {
 
 func TestReadNetTCPFile(t *testing.T) {
 	type Expectation struct {
-		Ports []ServedPort
+		Ports []*ServedPort
 		Error error
 	}
 	tests := []struct {
@@ -117,7 +179,7 @@ func TestReadNetTCPFile(t *testing.T) {
 			Input:         validTCPInput,
 			ListeningOnly: true,
 			Expectation: Expectation{
-				Ports: []ServedPort{
+				Ports: []*ServedPort{
 					{Port: 23000},
 					{Port: 6080},
 					{Port: 5900, BoundToLocalhost: true},
@@ -129,7 +191,7 @@ func TestReadNetTCPFile(t *testing.T) {
 			Input:         validTCP6Input,
 			ListeningOnly: true,
 			Expectation: Expectation{
-				Ports: []ServedPort{
+				Ports: []*ServedPort{
 					{Port: 22999},
 					{Port: 35900},
 					{Port: 5900, BoundToLocalhost: true},
@@ -150,7 +212,8 @@ func TestReadNetTCPFile(t *testing.T) {
 			var act Expectation
 			act.Ports, act.Error = readNetTCPFile(bytes.NewReader([]byte(test.Input)), test.ListeningOnly)
 
-			if diff := cmp.Diff(test.Expectation, act); diff != "" {
+			sortPorts := cmpopts.SortSlices(func(x, y *ServedPort) bool { return x.Port < y.Port })
+			if diff := cmp.Diff(test.Expectation, act, sortPorts); diff != "" {
 				t.Errorf("unexpected result (-want +got):\n%s", diff)
 			}
 		})
